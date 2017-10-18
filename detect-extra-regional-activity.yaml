@@ -1,81 +1,80 @@
----
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Detects and alarms on extra-regional activities
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: CloudWatch Rules and Alarms
+        Parameters:
+          - ExpectedRegion
+          - LogGroupName
+          - NotificationEmailAddressForCloudWatchAlarms
 
-  AWSTemplateFormatVersion: "2010-09-09"
-  Description: Detects and alarms on extra-regional activities
-  Metadata: 
-    AWS::CloudFormation::Interface: 
-      ParameterGroups: 
-        - Label: 
-            default: CloudWatch Rules and Alarms
-          Parameters: 
-            - ExpectedRegion
-            - LogGroupName
-            - NotificationEmailAddressForCloudWatchAlarms
+    ParameterLabels:
+      ExpectedRegion:
+        default: Expected Region
+      LogGroupName:
+        default: CloudTrail Log Group
+      NotificationEmailAddressForCloudWatchAlarms:
+        default: Notification Address
 
-      ParameterLabels: 
-        ExpectedRegion: 
-          default: Expected Region
-        LogGroupName: 
-          default: CloudTrail Log Group
-        NotificationEmailAddressForCloudWatchAlarms: 
-          default: Notification Address
+#==================================================
+# Parameters
+#==================================================
+Parameters:
+  ExpectedRegion:
+    Description: |
+      The region to have expected activity. Events in all other regions will trigger a CloudWatch alarm.
+    Type: String
+    Default: us-east-1
 
-  #==================================================
-  # Parameters
-  #==================================================
-  Parameters:
-    ExpectedRegion: 
-      Description: The region to have expected activity. Events in all other regions will trigger a CloudWatch alarm.
-      Type: String
-      Default: "us-east-1"
+  LogGroupName:
+    Description: |
+      The name of the existing CloudWatch Log Group used by CloudTrail to log events across all regions.
+    Type: String
+    Default: CloudTrail/DefaultLogGroup
 
-    LogGroupName: 
-      Description: The name of the CloudWatch Log Group used by CloudTrail to log events across all regions.
-      Type: String
-      Default: "CloudTrail/DefaultLogGroup"
+  NotificationEmailAddressForCloudWatchAlarms:
+    Description: |
+      Email address that will be subscribed to the SNS topic for CloudWatch alarms and rules (a subscription confirmation email will be sent).
+    Type: String
 
-    NotificationEmailAddressForCloudWatchAlarms: 
-      Description: Email address that will be subscribed to the SNS topic for CloudWatch alarms and rules (a subscription confirmation email will be sent).
-      Type: String
-      Default: ""
+#==================================================
+# Resources
+#==================================================
+Resources:
 
-  #==================================================
-  # Resources
-  #==================================================
-  Resources:
-  
-    SnsTopicForExtraRegionalActivityEvents: 
-      Type: "AWS::SNS::Topic"
-      Properties: 
-        TopicName: ExtraRegionalCloudWatchNotifications
-        DisplayName: !Sub Broadcasts when activities are detected outside of ${ExpectedRegion}
-        Subscription: 
-          - 
-            Endpoint: !Ref NotificationEmailAddressForCloudWatchAlarms
-            Protocol: email
+  SnsTopicForExtraRegionalActivityEvents:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: ExtraRegionalCloudWatchNotifications
+      DisplayName: !Sub Broadcasts when activities are detected outside of ${ExpectedRegion}
+      Subscription:
+        - Endpoint: !Ref NotificationEmailAddressForCloudWatchAlarms
+          Protocol: email
 
-    ExtraRegionalActivityCloudWatchFilter: 
-      Type: "AWS::Logs::MetricFilter"
-      Properties: 
-        LogGroupName: !Ref LogGroupName
-        FilterPattern: !Sub "{ $.awsRegion != ${ExpectedRegion} }"
-        MetricTransformations: 
-          - 
-            MetricNamespace: "CloudTrailMetrics"
-            MetricName: "ExtraRegionalActivity"
-            MetricValue: "1"
+  ExtraRegionalActivityCloudWatchFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref LogGroupName
+      FilterPattern: !Sub "{ $.awsRegion != ${ExpectedRegion} }"
+      MetricTransformations:
+        - MetricNamespace: CloudTrailMetrics
+          MetricName: ExtraRegionalActivity
+          MetricValue: 1
 
-    ExtraRegionalActivityCloudWatchAlarm: 
-      Type: "AWS::CloudWatch::Alarm"
-      Properties: 
-        AlarmName: Extra-Regional Activity Detected
-        AlarmDescription: !Sub Alarms when activities are detected outside of ${ExpectedRegion}
-        AlarmActions: 
-          - !Ref SnsTopicForExtraRegionalActivityEvents
-        MetricName: "ExtraRegionalActivity"
-        Namespace: "CloudTrailMetrics"
-        ComparisonOperator: "GreaterThanOrEqualToThreshold"
-        EvaluationPeriods: "1"
-        Period: "60"
-        Statistic: "Sum"
-        Threshold: "1"
+  ExtraRegionalActivityCloudWatchAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: Extra-Regional Activity Detected
+      AlarmDescription: !Sub Alarms when activities are detected outside of ${ExpectedRegion}
+      AlarmActions:
+        - !Ref SnsTopicForExtraRegionalActivityEvents
+      MetricName: ExtraRegionalActivity
+      Namespace: CloudTrailMetrics
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: 1
+      Period: 60
+      Statistic: Sum
+      Threshold: 1
+      TreatMissingData: notBreaching
