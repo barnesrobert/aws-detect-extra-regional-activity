@@ -57,7 +57,7 @@ Resources:
     Type: AWS::Logs::MetricFilter
     Properties:
       LogGroupName: !Ref LogGroupName
-      FilterPattern: !Sub "{ $.awsRegion != ${ExpectedRegion} }"
+      FilterPattern: !Sub '{ ($.awsRegion != "us-east-1") && (($.eventName != "Get*") && ($.eventName != "Describe*") && ($.eventName != "List*")) }'
       MetricTransformations:
         - MetricNamespace: CloudTrailMetrics
           MetricName: ExtraRegionalActivity
