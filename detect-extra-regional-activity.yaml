@@ -30,7 +30,7 @@ Parameters:
 
   LogGroupName:
     Description: |
-      The name of the existing CloudWatch Log Group used by CloudTrail to log events across all regions.
+      The name of the CloudWatch Log Group used by CloudTrail to log events across all regions.
     Type: String
     Default: CloudTrail/DefaultLogGroup
 
@@ -57,7 +57,7 @@ Resources:
     Type: AWS::Logs::MetricFilter
     Properties:
       LogGroupName: !Ref LogGroupName
-      FilterPattern: !Sub '{ ($.awsRegion != "us-east-1") && (($.eventName != "Get*") && ($.eventName != "Describe*") && ($.eventName != "List*")) }'
+      FilterPattern: !Sub '{ $.awsRegion != "${ExpectedRegion}" && (($.eventName!= "Get*") && ($.eventName!= "Describe*") && ($.eventName!= "List*") && ($.userIdentity.invokedBy != "config.amazonaws.com"))}'
       MetricTransformations:
         - MetricNamespace: CloudTrailMetrics
           MetricName: ExtraRegionalActivity
@@ -77,4 +77,3 @@ Resources:
       Period: 60
       Statistic: Sum
       Threshold: 1
-      TreatMissingData: notBreaching
